@@ -243,3 +243,14 @@ class AsegurarCanalesTests(CronopiosPortalBase):
             .values_list("platform", flat=True)
         )
         self.assertEqual(platforms, ["devto", "instagram", "linkedin_company"])
+
+
+class AgregarClienteZonaTests(CronopiosPortalBase):
+    def test_sets_the_client_timezone_and_rejects_unknown_ones(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        call_command("agregar_cliente", espacio="Zona", email="z@cliente.com", zona="Europe/Madrid", organizacion="Cronopios")
+        self.assertEqual(Workspace.objects.get(name="Zona").timezone, "Europe/Madrid")
+        with self.assertRaises(CommandError):
+            call_command("agregar_cliente", espacio="Zona", email="z@cliente.com", zona="Marte/Base", organizacion="Cronopios")

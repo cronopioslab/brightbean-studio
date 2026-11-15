@@ -27,6 +27,7 @@ class Command(BaseCommand):
         parser.add_argument("--email", required=True, help="Correo de la persona que aprueba")
         parser.add_argument("--nombre", default="", help="Nombre de la persona (para el saludo del correo)")
         parser.add_argument("--organizacion", default="", help="Organización; por defecto, la única que exista")
+        parser.add_argument("--zona", default="", help="Zona horaria del cliente, p. ej. Europe/Madrid")
         parser.add_argument("--enviar-enlace", action="store_true", help="Enviar ya el correo con su enlace")
 
     def handle(self, *args, **opts):
@@ -39,6 +40,13 @@ class Command(BaseCommand):
         if orgs.count() != 1:
             raise CommandError("No encuentro una única organización; usa --organizacion.")
         org = orgs.get()
+        if opts["zona"]:
+            from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+            try:
+                ZoneInfo(opts["zona"])
+            except (ZoneInfoNotFoundError, ValueError):
+                raise CommandError(f"No conozco la zona horaria «{opts['zona']}»; usa, p. ej., Europe/Madrid.")
         owner = OrgMembership.objects.filter(organization=org, org_role="owner").select_related("user").first()
 
         with transaction.atomic():
@@ -51,6 +59,9 @@ class Command(BaseCommand):
                 WorkspaceMembership.objects.get_or_create(
                     user=owner.user, workspace=ws, defaults={"workspace_role": "owner"}
                 )
+            if opts["zona"] and ws.timezone != opts["zona"]:
+                ws.timezone = opts["zona"]
+                ws.save(update_fields=["timezone"])
             SocialAccount.objects.get_or_create(
                 workspace=ws,
                 platform="instagram",
