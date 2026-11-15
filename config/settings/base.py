@@ -21,6 +21,8 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 APP_URL = env("APP_URL")
+# Cronopios: where the website contact form is emailed (comma-separated); default: superusers.
+CONTACT_EMAIL = env("CONTACT_EMAIL", default="")
 
 # Application definition
 

@@ -1,0 +1,52 @@
+# Cronopios: Caddy for the portal AND the agency website, on one server.
+# Mounted as a directory (deploy/caddy -> /etc/caddy) so a git update is seen
+# by the container; cronopios-update reloads Caddy after each update.
+#   APP_DOMAIN    portal (BrightBean), e.g. portal.example.com
+#   APP_ALIASES   older portal names kept working (old email links), optional
+#   SITE_DOMAIN   the public website, e.g. example.com (www. redirects to it)
+
+(portal) {
+    handle_path /media/* {
+        header {
+            X-Content-Type-Options nosniff
+            Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        }
+        root * {$CADDY_MEDIA_ROOT:/app/media}
+        file_server
+    }
+    handle {
+        reverse_proxy app:8000
+    }
+    encode gzip
+}
+
+{$APP_DOMAIN} {$APP_ALIASES} {
+    import portal
+}
+
+{$SITE_DOMAIN} {
+    encode gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000"
+    }
+    # The contact form posts here; Django only answers to the portal's name.
+    handle /contacto/enviar/ {
+        reverse_proxy app:8000 {
+            header_up Host {$APP_DOMAIN}
+        }
+    }
+    # "Clientes" button on the site.
+    redir /clientes https://{$APP_DOMAIN}/ 302
+    redir /clientes/ https://{$APP_DOMAIN}/ 302
+    handle {
+        root * /srv/sitio
+        try_files {path} {path}.html {path}/index.html
+        file_server
+    }
+}
+
+www.{$SITE_DOMAIN} {
+    redir https://{$SITE_DOMAIN}{uri} permanent
+}

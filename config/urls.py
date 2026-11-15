@@ -5,6 +5,8 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path, re_path
+
+from apps.client_portal import contact as cronopios_contact
 from django.views.static import serve
 
 from apps.accounts.views import health_check
@@ -71,6 +73,8 @@ urlpatterns = [
     path("workspace/<uuid:workspace_id>/media/", include("apps.media_library.urls")),
     # Client Portal (Stream F)
     path("portal/", include("apps.client_portal.urls")),
+    # Cronopios: contact form of the agency website (forwarded by Caddy from the site domain).
+    path("contacto/enviar/", cronopios_contact.contact_submit, name="cronopios_contact"),
     path("notifications/", include("apps.notifications.urls")),
     path("onboarding/", include("apps.onboarding.urls")),
     path("organizations/media/", include("apps.media_library.urls_org")),

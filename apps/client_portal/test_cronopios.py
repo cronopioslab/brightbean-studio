@@ -305,3 +305,34 @@ class PortalVideoTests(CronopiosPortalBase):
         html = render_to_string("client_portal/_client_card.html", {"post": post, "workspace": self.workspace})
         self.assertIn("<video", html)
         self.assertIn("s1.mp4", html)
+
+
+class ContactFormTests(TestCase):
+    def setUp(self):
+        User.objects.create_superuser(email="dueña@example.com", password="x")
+
+    def _send(self, **data):
+        payload = {"nombre": "Ana", "email": "ana@empresa.com", "interes": "Página web", "mensaje": "Quiero una web."}
+        payload.update(data)
+        return Client().post("/contacto/enviar/", json.dumps(payload), content_type="application/json")
+
+    def test_message_reaches_the_owner_with_reply_to(self):
+        r = self._send()
+        self.assertEqual(r.status_code, 200, r.content)
+        msg = mail.outbox[-1]
+        self.assertEqual(msg.to, ["dueña@example.com"])
+        self.assertEqual(msg.reply_to, ["ana@empresa.com"])
+        self.assertIn("Quiero una web.", msg.body)
+
+    def test_bad_email_and_honeypot(self):
+        self.assertEqual(self._send(email="nope").status_code, 400)
+        mail.outbox.clear()
+        self.assertEqual(self._send(web="spam").status_code, 200)
+        self.assertEqual(mail.outbox, [])
+
+    def test_rate_limit(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        codes = [self._send().status_code for _ in range(6)]
+        self.assertEqual(codes[-1], 429)

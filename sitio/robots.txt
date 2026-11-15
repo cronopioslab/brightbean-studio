@@ -1,0 +1,3 @@
+# Cronopios Lab: la página es pública y queremos que la lean buscadores e IA.
+User-agent: *
+Allow: /

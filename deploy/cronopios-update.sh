@@ -19,7 +19,14 @@ main() {
   install -m 0755 deploy/cronopios-cliente.sh /usr/local/bin/cronopios-cliente
   # The whole script is already read (main below), so replacing it is safe.
   install -m 0755 deploy/cronopios-update.sh /usr/local/bin/cronopios-update
+  install -m 0755 deploy/cronopios-dominio.sh /usr/local/bin/cronopios-dominio
+  # The website: until there is a domain it lives at sitio.<portal address>.
+  if [ -z "$(python3 deploy/cronopios-env.py get SITE_DOMAIN)" ]; then
+    python3 deploy/cronopios-env.py set "SITE_DOMAIN=sitio.$(python3 deploy/cronopios-env.py get APP_DOMAIN)"
+  fi
   $COMPOSE up -d --build </dev/null
+  # The Caddyfile is mounted as a directory; pick up its changes.
+  $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile </dev/null || true
   for i in $(seq 1 60); do $COMPOSE exec -T app python manage.py check </dev/null >/dev/null 2>&1 && break; sleep 5; done
   $COMPOSE exec -T app python manage.py asegurar_canales </dev/null || true
   docker image prune -f >/dev/null 2>&1 || true
