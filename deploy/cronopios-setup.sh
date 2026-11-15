@@ -123,6 +123,9 @@ if [ -n "${CLIENT_EMAIL:-}" ]; then
     --espacio "$FIRST_CLIENT" --email "$CLIENT_EMAIL" --nombre "${CLIENT_NAME:-}" </dev/null
 fi
 
+$COMPOSE exec -T app python manage.py asegurar_canales </dev/null || true
+SKIP_UPDATE=1 bash "$DIR/deploy/cronopios-actualizar.sh" </dev/null || true
+
 cat > /root/cronopios-listo.txt <<EOF
 BrightBean de Cronopios instalado.
 Entrar en: https://$APP_DOMAIN

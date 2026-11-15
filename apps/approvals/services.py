@@ -191,7 +191,21 @@ def approve_post(target, user, workspace, comment=""):
             },
         )
 
+    # Cronopios: approved pieces on a placeholder channel that names a person
+    # (e.g. the client's blog editor) are emailed to that person to publish.
+    if not advanced_to_client:
+        _queue_forwards(moved, user)
+
     return post
+
+
+def _queue_forwards(moved, approver):
+    from apps.client_portal.tasks import forward_approved_piece
+
+    for pp in moved:
+        account = pp.social_account
+        if pp.status == "approved" and account.is_validation_placeholder and "@" in (account.account_handle or ""):
+            forward_approved_piece(str(pp.id), str(approver.id))
 
 
 def request_changes(target, user, workspace, comment):

@@ -1,0 +1,19 @@
+{% autoescape off %}Hola:
+
+{% if approver %}{{ approver.display_name }} aprobó{% else %}Se aprobó{% endif %} esta pieza para {{ channel }}, de {{ workspace.name }}. Ya está lista para subir.
+{% if when %}
+Fecha prevista: {{ when|date:"j/n/Y" }} a las {{ when|date:"H:i" }}{% if tz %} ({{ tz }}){% endif %}.
+{% endif %}{% if title %}
+TÍTULO
+{{ title }}
+{% endif %}
+TEXTO
+{{ body }}
+{% if media %}
+IMÁGENES{% if attached %} (van adjuntas){% endif %}
+{% for m in media %}- {{ m.name }}: {{ m.url }}
+{% endfor %}{% endif %}
+Si algo no cierra, responde a este correo.
+
+Cronopios Lab
+{% endautoescape %}

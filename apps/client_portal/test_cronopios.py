@@ -184,3 +184,62 @@ class AgregarClienteCommandTests(CronopiosPortalBase):
 
         with self.assertRaises(CommandError):
             call_command("agregar_cliente", espacio=self.workspace.name, email=self.owner.email, organizacion="Cronopios")
+
+
+class ForwardApprovedPieceTests(CronopiosPortalBase):
+    def _blog(self, email="editor@cliente.com"):
+        return SocialAccount.objects.create(
+            workspace=self.workspace, platform="devto",
+            account_platform_id=SocialAccount.VALIDATION_PLACEHOLDER_PREFIX + "blog",
+            account_name="Blog (validación)", account_handle=email, connection_status="connected",
+        )
+
+    def _blog_post(self, account):
+        post = create_post(workspace=self.workspace, social_account=account, caption="Texto del artículo", title="Mi artículo", author=self.owner)
+        return post[0] if isinstance(post, tuple) else post
+
+    def _client_approves(self, post):
+        from apps.approvals.services import approve_post
+
+        self._to_client(post)
+        approve_post(post, self.client_user, self.workspace)
+
+    def _forwards(self):
+        return Task.objects.filter(task_name="apps.client_portal.tasks.forward_approved_piece")
+
+    def test_client_approval_queues_the_forward_and_email_reaches_the_editor(self):
+        from apps.client_portal.tasks import forward_approved_piece
+
+        post = self._blog_post(self._blog())
+        self._to_client(post)
+        self.assertFalse(self._forwards().exists())  # internal approval alone does not forward
+        from apps.approvals.services import approve_post
+
+        approve_post(post, self.client_user, self.workspace)
+        self.assertEqual(self._forwards().count(), 1)
+        mail.outbox.clear()
+        forward_approved_piece.now(str(post.platform_posts.get().id), str(self.client_user.id))
+        msg = mail.outbox[-1]
+        self.assertEqual(msg.to, ["editor@cliente.com"])
+        self.assertIn(self.owner.email, msg.cc)
+        self.assertIn("Mi artículo", msg.subject)
+        self.assertIn("Texto del artículo", msg.body)
+
+    def test_placeholder_without_email_is_not_forwarded(self):
+        post = self._blog_post(self._blog(email=""))
+        self._client_approves(post)
+        self.assertFalse(self._forwards().exists())
+
+
+class AsegurarCanalesTests(CronopiosPortalBase):
+    def test_creates_the_three_channels_once(self):
+        from django.core.management import call_command
+
+        call_command("asegurar_canales")
+        call_command("asegurar_canales")
+        platforms = sorted(
+            SocialAccount.objects.filter(workspace=self.workspace)
+            .exclude(account_platform_id="cronopios-validacion-demo")
+            .values_list("platform", flat=True)
+        )
+        self.assertEqual(platforms, ["devto", "instagram", "linkedin_company"])
