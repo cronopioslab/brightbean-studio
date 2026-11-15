@@ -254,3 +254,18 @@ class AgregarClienteZonaTests(CronopiosPortalBase):
         self.assertEqual(Workspace.objects.get(name="Zona").timezone, "Europe/Madrid")
         with self.assertRaises(CommandError):
             call_command("agregar_cliente", espacio="Zona", email="z@cliente.com", zona="Marte/Base", organizacion="Cronopios")
+
+
+class ApiKeyHeaderTests(CronopiosPortalBase):
+    def test_x_api_key_header_authenticates_and_bearer_wins(self):
+        from apps.api_keys.services import issue_api_key
+
+        token = issue_api_key(
+            workspace=self.workspace, social_accounts=[self.account], issued_by=self.owner, name="t", permissions=["create_posts"]
+        ).plaintext_token
+        c = Client()
+        self.assertEqual(c.get("/api/v1/me/", HTTP_X_API_KEY=token, secure=True).status_code, 200)
+        self.assertEqual(c.get("/api/v1/me/", HTTP_X_API_KEY="bb_studio_nope", secure=True).status_code, 401)
+        self.assertEqual(
+            c.get("/api/v1/me/", HTTP_AUTHORIZATION="Bearer bb_studio_nope", HTTP_X_API_KEY=token, secure=True).status_code, 401
+        )

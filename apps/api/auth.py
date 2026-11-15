@@ -94,6 +94,16 @@ class ApiKeyAuth(HttpBearer):
     ``@require_permission`` unchanged.
     """
 
+    def __call__(self, request: HttpRequest):
+        # Cronopios: also accept a ``bb_studio_`` key in ``X-Api-Key`` when no
+        # Authorization header is sent, so a second workspace's key can live
+        # next to the first one (each kept by a different header).
+        if not request.headers.get(self.header):
+            key = request.headers.get("X-Api-Key", "").strip()
+            if key.startswith(TOKEN_PREFIX):
+                return self.authenticate(request, key)
+        return super().__call__(request)
+
     def _pre_auth_reject(self, request: HttpRequest) -> bool:
         """Pre-auth defenses shared by every bearer (API key OR OAuth token).
 
