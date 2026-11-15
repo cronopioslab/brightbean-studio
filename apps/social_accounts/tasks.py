@@ -46,6 +46,11 @@ def _check_social_account_health(account_id: str):
         logger.warning("Health check: account %s not found, skipping", account_id)
         return
 
+    # Cronopios: placeholders collect client approvals before the real channel
+    # is connected. They have no token, so there is nothing to check.
+    if account.is_validation_placeholder:
+        return
+
     if account.platform == "youtube":
         from django.conf import settings
 
@@ -192,6 +197,8 @@ def schedule_all_health_checks():
             SocialAccount.ConnectionStatus.CONNECTED,
             SocialAccount.ConnectionStatus.TOKEN_EXPIRING,
         ]
+    ).exclude(
+        account_platform_id__startswith=SocialAccount.VALIDATION_PLACEHOLDER_PREFIX
     ).values_list("id", flat=True)
 
     count = 0

@@ -1,9 +1,7 @@
-Hi {{ client_user.display_name }},
+Hola{% if client_user.name %} {{ client_user.name }}{% endif %}:
 
-{{ created_by.display_name }} has shared content for your review in {{ workspace.name }}.
-
-Click the link below to access your portal and approve or provide feedback on scheduled posts:
+{{ created_by.display_name }} te envió tu acceso al portal de {{ workspace.name }}. Ahí puedes aprobar las piezas o pedir cambios con un comentario.
 
 {{ magic_url }}
 
-This link is valid for 30 days. If it expires, ask your account manager for a new one.
+Puedes usar este enlace las veces que quieras, desde el celular o la computadora, durante 30 días.

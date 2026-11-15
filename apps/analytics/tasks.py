@@ -1591,6 +1591,9 @@ def sync_all_account_analytics() -> None:
     accounts = SocialAccount.objects.filter(
         connection_status=SocialAccount.ConnectionStatus.CONNECTED,
         platform__in=syncable,
+    ).exclude(
+        # Cronopios: approval-only placeholders have no data to sync.
+        account_platform_id__startswith=SocialAccount.VALIDATION_PLACEHOLDER_PREFIX
     ).select_related("workspace")
 
     totals = [0, 0, 0]  # synced, failed, api_calls

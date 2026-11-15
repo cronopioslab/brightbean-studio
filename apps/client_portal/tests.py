@@ -48,9 +48,12 @@ class PeekMagicLinkTests(MagicLinkTestBase):
         self._expire(self.token)
         self.assertIsNone(peek_magic_link(self.token.token))
 
-    def test_peek_returns_none_for_consumed_token(self):
+    def test_peek_accepts_a_used_token_until_it_expires(self):
+        # Cronopios: links are reusable (phone, then computer) until they expire.
         self.token.is_consumed = True
         self.token.save(update_fields=["is_consumed"])
+        self.assertEqual(peek_magic_link(self.token.token), self.token)
+        self._expire(self.token)
         self.assertIsNone(peek_magic_link(self.token.token))
 
     def test_peek_returns_none_for_unknown_token(self):
@@ -67,9 +70,12 @@ class ConsumeMagicLinkTests(MagicLinkTestBase):
         self.assertTrue(self.token.is_consumed)
         self.assertIsNotNone(self.token.last_used_at)
 
-    def test_consume_second_use_is_rejected(self):
+    def test_consume_second_use_is_accepted(self):
+        # Cronopios: the same email link works on a second device.
         consume_magic_link(self.token.token)
-        self.assertEqual(consume_magic_link(self.token.token), (None, None, False))
+        user, workspace, is_valid = consume_magic_link(self.token.token)
+        self.assertTrue(is_valid)
+        self.assertEqual(user, self.client_user)
 
     def test_consume_expired_token_is_rejected(self):
         self._expire(self.token)
@@ -90,9 +96,8 @@ class MagicLinkEntryViewTests(MagicLinkTestBase):
         self.token.refresh_from_db()
         self.assertFalse(self.token.is_consumed)
 
-    def test_get_with_consumed_token_redirects_to_expired(self):
-        self.token.is_consumed = True
-        self.token.save(update_fields=["is_consumed"])
+    def test_get_with_expired_token_redirects_to_expired(self):
+        self._expire(self.token)
         response = self.client.get(self._entry_url())
         self.assertRedirects(response, reverse("client_portal:magic_link_expired"))
 
@@ -107,9 +112,17 @@ class MagicLinkEntryViewTests(MagicLinkTestBase):
         self.assertTrue(self.token.is_consumed)
         self.assertTrue(self.client.session.get("is_portal_session"))
 
-    def test_post_twice_rejects_the_reused_token(self):
+    def test_post_from_a_second_device_starts_a_session(self):
+        # Cronopios: phone first, then computer, with the same link.
         self.client.post(self._entry_url())
-        # A fresh client simulates the link being replayed by someone else.
+        second_device = Client()
+        response = second_device.post(self._entry_url())
+        self.assertRedirects(response, reverse("client_portal:dashboard"), fetch_redirect_response=False)
+        self.assertTrue(second_device.session.get("is_portal_session"))
+
+    def test_post_with_a_revoked_token_is_rejected(self):
+        self.client.post(self._entry_url())
+        self._expire(self.token)
         replay = Client()
         response = replay.post(self._entry_url())
         self.assertRedirects(response, reverse("client_portal:magic_link_expired"))

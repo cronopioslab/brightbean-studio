@@ -48,6 +48,8 @@ class TosAcceptanceMiddleware:
             and hasattr(request, "user")
             and request.user.is_authenticated
             and request.user.tos_accepted_at is None
+            # Cronopios: portal clients accept the agency's terms, not the app's.
+            and not request.session.get("is_portal_session")
         ):
             return redirect(reverse("accounts:accept_terms"))
 

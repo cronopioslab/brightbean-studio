@@ -1,0 +1,8 @@
+Hola{% if client_user.name %} {{ client_user.name }}{% endif %}:
+
+{% if reminder %}Te recordamos que {% if pending == 1 %}hay 1 pieza esperando{% else %}hay {{ pending }} piezas esperando{% endif %} tu revisión.{% else %}{% if pending == 1 %}Tienes 1 pieza nueva{% else %}Tienes {{ pending }} piezas{% endif %} para revisar.{% endif %}
+Puedes aprobarlas o pedir cambios con un comentario. Nada se publica sin tu aprobación.
+
+{{ magic_url }}
+
+Puedes usar este enlace las veces que quieras, desde el celular o la computadora, hasta el {{ expires_at|date:"j/n/Y" }}. Si vence, te llega uno nuevo con el próximo aviso.

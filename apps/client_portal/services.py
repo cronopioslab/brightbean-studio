@@ -4,6 +4,7 @@ Handles magic link generation, verification, and portal session creation.
 """
 
 import logging
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import login
@@ -55,7 +56,6 @@ def generate_magic_link(workspace, client_user, created_by):
         MagicLinkToken.objects.filter(
             user=client_user,
             workspace=workspace,
-            is_consumed=False,
             expires_at__gt=timezone.now(),
         ).values_list("pk", flat=True)
     )
@@ -79,7 +79,7 @@ def generate_magic_link(workspace, client_user, created_by):
         "app_url": app_url,
     }
 
-    subject = f"{workspace.name} - Posts ready for your review"
+    subject = f"{workspace.name}: tu acceso al portal de aprobación"
     text_content = render_to_string("client_portal/email/magic_link.txt", context)
     html_content = render_to_string("client_portal/email/magic_link.html", context)
 
@@ -122,14 +122,17 @@ def peek_magic_link(token_string):
     except MagicLinkToken.DoesNotExist:
         return None
 
-    if token.is_expired or token.is_consumed:
+    # Cronopios: a link stays usable until it expires or a newer one replaces
+    # it, so a client can open the same email on their phone and on their
+    # computer. Revocation still works by expiring the token.
+    if token.is_expired:
         return None
 
     return token
 
 
 def consume_magic_link(token_string):
-    """Validate and atomically consume a magic link token (single-use).
+    """Validate a magic link token and record its use (reusable until it expires).
 
     Returns:
         (user, workspace, is_valid) tuple.
@@ -143,13 +146,12 @@ def consume_magic_link(token_string):
     if token.is_expired:
         return None, None, False
 
-    # Atomic single-use: only the request that flips is_consumed False->True wins.
-    consumed = MagicLinkToken.objects.filter(pk=token.pk, is_consumed=False).update(
+    # Cronopios: reusable until it expires (see peek_magic_link). We still
+    # record that it was used and when, for the client list in settings.
+    MagicLinkToken.objects.filter(pk=token.pk).update(
         is_consumed=True,
         last_used_at=timezone.now(),
     )
-    if not consumed:
-        return None, None, False
 
     return token.user, token.workspace, True
 
@@ -173,3 +175,88 @@ def create_portal_session(request, user, workspace):
     request.session["portal_workspace_id"] = str(workspace.id)
     # 30-day session
     request.session.set_expiry(30 * 24 * 60 * 60)
+
+
+# ---------------------------------------------------------------------------
+# Cronopios: every review email carries the client's portal link
+# ---------------------------------------------------------------------------
+
+# A link this close to expiring is replaced by a fresh one in the next email,
+# so the link a client receives is always good for at least this long.
+REVIEW_LINK_MIN_REMAINING = timedelta(days=7)
+
+
+def _pending_client_post_count(workspace):
+    from apps.composer.models import PlatformPost
+
+    return (
+        PlatformPost.objects.filter(post__workspace=workspace, status="pending_client")
+        .values("post_id")
+        .distinct()
+        .count()
+    )
+
+
+def send_review_email(workspace, client_user, *, reminder=False):
+    """Email a client their portal link and how many pieces await them.
+
+    Reuses the client's current link while it has at least
+    ``REVIEW_LINK_MIN_REMAINING`` left, so older emails keep working; otherwise
+    issues a new one and expires the previous links once the email has left.
+    Returns True when an email was sent.
+    """
+    pending = _pending_client_post_count(workspace)
+    if pending == 0:
+        return False
+
+    now = timezone.now()
+    token = (
+        MagicLinkToken.objects.filter(
+            user=client_user,
+            workspace=workspace,
+            expires_at__gt=now + REVIEW_LINK_MIN_REMAINING,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    created = token is None
+    if created:
+        token = MagicLinkToken.objects.create(user=client_user, workspace=workspace)
+
+    app_url = getattr(settings, "APP_URL", "http://localhost:8000").rstrip("/")
+    context = {
+        "client_user": client_user,
+        "workspace": workspace,
+        "magic_url": f"{app_url}/portal/{token.token}/",
+        "pending": pending,
+        "reminder": reminder,
+        "expires_at": token.expires_at,
+    }
+    piezas = "1 pieza" if pending == 1 else f"{pending} piezas"
+    if reminder:
+        subject = f"Recordatorio: {piezas} de {workspace.name} esperan tu revisión"
+    else:
+        subject = f"{workspace.name}: {piezas} para revisar"
+
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=render_to_string("client_portal/email/review_request.txt", context),
+        from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@localhost"),
+        to=[client_user.email],
+        headers=transactional(),
+    )
+    msg.attach_alternative(render_to_string("client_portal/email/review_request.html", context), "text/html")
+
+    try:
+        send_or_raise(msg)
+    except Exception:
+        logger.exception("Failed to send review email to %s", client_user.email)
+        if created:
+            MagicLinkToken.objects.filter(pk=token.pk).delete()
+        return False
+
+    if created:
+        MagicLinkToken.objects.filter(
+            user=client_user, workspace=workspace, expires_at__gt=now
+        ).exclude(pk=token.pk).update(expires_at=now)
+    return True

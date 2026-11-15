@@ -107,6 +107,9 @@ def _remind_reviewers(post):
 
     for membership in memberships:
         perms = membership.effective_permissions
+        # Cronopios: internal-review reminders never go to clients.
+        if membership.workspace_role == WorkspaceMembership.WorkspaceRole.CLIENT:
+            continue
         if perms.get("approve_posts", False):
             notify(
                 user=membership.user,
@@ -128,17 +131,11 @@ def _remind_clients(post):
         workspace_role=WorkspaceMembership.WorkspaceRole.CLIENT,
     ).select_related("user")
 
+    # Cronopios: the reminder carries the portal link too.
+    from apps.client_portal.tasks import queue_client_review_email
+
     for membership in client_memberships:
-        notify(
-            user=membership.user,
-            event_type=EventType.APPROVAL_REMINDER,
-            title="Posts waiting for your approval",
-            body=f"Content in {workspace.name} is waiting for your review.",
-            data={
-                "post_id": str(post.id),
-                "workspace_id": str(workspace.id),
-            },
-        )
+        queue_client_review_email(workspace, membership.user, reminder=True)
 
 
 def _escalate(post, stage):

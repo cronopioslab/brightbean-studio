@@ -23,6 +23,15 @@ class YouTubeRevocation(models.Model):
 class SocialAccount(models.Model):
     _skip_analytics_backfill: bool
 
+    # Cronopios: an account whose platform id starts with this is a placeholder
+    # created by hand so clients can approve pieces before the real channel is
+    # connected. It has no token: background syncs and health checks skip it.
+    VALIDATION_PLACEHOLDER_PREFIX = "cronopios-validacion-"
+
+    @property
+    def is_validation_placeholder(self):
+        return self.account_platform_id.startswith(self.VALIDATION_PLACEHOLDER_PREFIX)
+
     class AnalyticsStatus(models.TextChoices):
         UNKNOWN = "unknown", "Not checked"
         CHECKING = "checking", "Checking"

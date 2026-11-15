@@ -90,6 +90,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "apps.accounts.middleware.AuthRateLimitMiddleware",
+    "apps.client_portal.middleware.PortalSessionMiddleware",
     "apps.accounts.middleware.TosAcceptanceMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "apps.members.middleware.RBACMiddleware",

@@ -1,6 +1,7 @@
 """Template helpers for the approval-workflow UI."""
 
 from django import template
+from django.utils import translation
 
 register = template.Library()
 
@@ -39,4 +40,19 @@ STATUS_META = {
 @register.inclusion_tag("approvals/partials/_status_badge.html")
 def status_badge(status):
     """Render the editorial-status pill (dot + label) for *status*."""
-    return {"meta": STATUS_META.get(status, STATUS_META["draft"])}
+    meta = STATUS_META.get(status, STATUS_META["draft"])
+    # Cronopios: the client portal renders in Spanish (see PortalSessionMiddleware).
+    if translation.get_language() == "es" and status in STATUS_LABELS_ES:
+        meta = {**meta, "label": STATUS_LABELS_ES[status]}
+    return {"meta": meta}
+
+
+STATUS_LABELS_ES = {
+    "pending_client": "Esperando tu aprobación",
+    "approved": "Aprobada",
+    "on_hold": "En pausa",
+    "changes_requested": "Cambios pedidos",
+    "rejected": "Rechazada",
+    "scheduled": "Programada",
+    "published": "Publicada",
+}

@@ -205,6 +205,9 @@ class InboxSyncEngine:
         """Poll each connected account for new messages."""
         accounts = SocialAccount.objects.filter(
             connection_status=SocialAccount.ConnectionStatus.CONNECTED,
+        ).exclude(
+            # Cronopios: approval-only placeholders have no messages to poll.
+            account_platform_id__startswith=SocialAccount.VALIDATION_PLACEHOLDER_PREFIX
         ).select_related("workspace")
 
         # One dict for the whole pass. Accounts overwhelmingly share a single

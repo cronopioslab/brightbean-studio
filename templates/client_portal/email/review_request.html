@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0; padding:0; font-family: system-ui, -apple-system, sans-serif; background: #FAFAF9;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="520" cellpadding="0" cellspacing="0" style="background: #FFFFFF; border-radius: 12px; border: 1px solid #E7E5E4; overflow: hidden;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 32px 32px 0 32px;">
+                            <p style="font-size: 15px; font-weight: 700; color: #1C1917; margin: 0;">
+                                {{ workspace.name }}
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 24px 32px 32px 32px;">
+                            <p style="font-size: 15px; color: #44403C; line-height: 1.6; margin: 0 0 8px 0;">
+                                Hola{% if client_user.name %} {{ client_user.name }}{% endif %}:
+                            </p>
+                            <p style="font-size: 15px; color: #44403C; line-height: 1.6; margin: 0 0 24px 0;">
+                                {% if reminder %}Te recordamos que {% if pending == 1 %}hay 1 pieza esperando{% else %}hay {{ pending }} piezas esperando{% endif %} tu revisión.{% else %}{% if pending == 1 %}Tienes 1 pieza nueva{% else %}Tienes {{ pending }} piezas{% endif %} para revisar.{% endif %} Puedes aprobarlas o pedir cambios con un comentario. Nada se publica sin tu aprobación.
+                            </p>
+                            <!-- CTA Button -->
+                            <table cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{{ magic_url }}"
+                                           style="display: inline-block; padding: 12px 32px; background: #F97316; color: #FFFFFF; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 9999px;">
+                                            Revisar piezas
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="font-size: 13px; color: #A8A29E; line-height: 1.6; margin: 24px 0 0 0;">
+                                Puedes usar este enlace las veces que quieras, desde el celular o la computadora, hasta el {{ expires_at|date:"j/n/Y" }}. Si vence, te llega uno nuevo con el próximo aviso.
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 16px 32px; border-top: 1px solid #E7E5E4;">
+                            <p style="font-size: 12px; color: #A8A29E; margin: 0;">
+                                Recibes este correo porque {{ workspace.organization.name }} te comparte las piezas de {{ workspace.name }} para que las apruebes.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

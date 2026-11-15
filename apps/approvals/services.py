@@ -79,6 +79,9 @@ def _notify_reviewers(workspace, actor, *, post, event_type, title, body):
     reviewers = WorkspaceMembership.objects.filter(workspace=workspace).select_related("user", "custom_role")
     for membership in reviewers:
         perms = membership.effective_permissions
+        # Cronopios: clients only ever see work in the portal, after internal review.
+        if membership.workspace_role == WorkspaceMembership.WorkspaceRole.CLIENT:
+            continue
         if perms.get("approve_posts", False) and membership.user != actor:
             notify(
                 user=membership.user,
@@ -416,14 +419,9 @@ def _notify_clients(post, workspace):
         workspace_role=WorkspaceMembership.WorkspaceRole.CLIENT,
     ).select_related("user")
 
+    # Cronopios: clients get one email with their portal link (batched, see
+    # apps.client_portal.tasks) instead of a notification with no way in.
+    from apps.client_portal.tasks import queue_client_review_email
+
     for membership in client_memberships:
-        notify(
-            user=membership.user,
-            event_type=EventType.CLIENT_APPROVAL_REQUESTED,
-            title="Posts ready for your review",
-            body=f"A post in {workspace.name} is waiting for your approval.",
-            data={
-                "post_id": str(post.id),
-                "workspace_id": str(workspace.id),
-            },
-        )
+        queue_client_review_email(workspace, membership.user)
