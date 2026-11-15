@@ -280,3 +280,11 @@ class AsegurarModoClienteTests(CronopiosPortalBase):
         call_command("asegurar_canales")
         self.workspace.refresh_from_db()
         self.assertEqual(self.workspace.approval_workflow_mode, "required_internal_and_client")
+
+
+class EntryPageTests(CronopiosPortalBase):
+    def test_entry_button_has_a_visible_color(self):
+        token = MagicLinkToken.objects.create(user=self.client_user, workspace=self.workspace)
+        response = Client().get(f"/portal/{token.token}/")
+        self.assertContains(response, "Entrar al portal")
+        self.assertContains(response, "background: #0E7C5A")
