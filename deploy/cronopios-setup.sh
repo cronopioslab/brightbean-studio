@@ -15,6 +15,12 @@
 #   REPO_URL, REPO_BRANCH
 set -euo pipefail
 
+# The whole script is one function, run on the last line. When it is piped
+# into bash (curl ... | bash), bash then reads all of it before running any of
+# it, so a command that reads stdin (docker compose exec) cannot swallow the
+# rest of the script. Every compose exec also gets </dev/null for the same reason.
+main() {
+
 : "${ADMIN_EMAIL:?}" "${ADMIN_PASSWORD:?}" "${SMTP_USER:?}" "${SMTP_PASSWORD:?}"
 REPO_URL="${REPO_URL:-https://github.com/cronopioslab/brightbean-studio.git}"
 REPO_BRANCH="${REPO_BRANCH:-cronopios/portal-es}"
@@ -80,7 +86,7 @@ COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml -f dock
 $COMPOSE up -d --build
 
 echo "== waiting for the app"
-for i in $(seq 1 60); do $COMPOSE exec -T app python manage.py check >/dev/null 2>&1 && break; sleep 5; done
+for i in $(seq 1 60); do $COMPOSE exec -T app python manage.py check </dev/null >/dev/null 2>&1 && break; sleep 5; done
 
 ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" FIRST_CLIENT="$FIRST_CLIENT" \
 $COMPOSE exec -T -e ADMIN_EMAIL -e ADMIN_PASSWORD -e FIRST_CLIENT app python manage.py shell -c '
@@ -110,11 +116,11 @@ SocialAccount.objects.get_or_create(
     defaults={"account_name": "Instagram (validación)", "connection_status": "connected"},
 )
 print("ok", org.name, ws.name)
-'
+' </dev/null
 
 if [ -n "${CLIENT_EMAIL:-}" ]; then
   $COMPOSE exec -T app python manage.py agregar_cliente \
-    --espacio "$FIRST_CLIENT" --email "$CLIENT_EMAIL" --nombre "${CLIENT_NAME:-}"
+    --espacio "$FIRST_CLIENT" --email "$CLIENT_EMAIL" --nombre "${CLIENT_NAME:-}" </dev/null
 fi
 
 cat > /root/cronopios-listo.txt <<EOF
@@ -124,3 +130,6 @@ Usuario: $ADMIN_EMAIL
 Registro: $LOG
 EOF
 cat /root/cronopios-listo.txt
+}
+
+main "$@"
