@@ -20,6 +20,11 @@
         <span class="text-xs font-medium px-2.5 py-1 rounded-full" style="background: #DCFCE7; color: #166534;">
             Link active
         </span>
+        {% if client.token.last_used_at %}
+        <span class="text-xs ml-1" style="color: var(--text-secondary);" title="{{ client.token.last_used_at }}">Vio las piezas hace {{ client.token.last_used_at|timesince }}</span>
+        {% else %}
+        <span class="text-xs ml-1" style="color: #B45309;">Todavía no abrió el enlace</span>
+        {% endif %}
         {% else %}
         <span class="text-xs font-medium px-2.5 py-1 rounded-full" style="background: var(--neutral-100); color: var(--text-tertiary);">
             No link sent

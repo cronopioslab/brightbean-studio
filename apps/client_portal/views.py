@@ -5,12 +5,14 @@ from collections import defaultdict
 from django.db.models import F, Prefetch
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.approvals import services as approval_services
 from apps.approvals.models import ApprovalAction, PostComment
 from apps.common.htmx import toast_response
 from apps.composer.models import Post
+from apps.client_portal.models import MagicLinkToken
 from apps.members.models import WorkspaceMembership
 
 from .decorators import portal_auth_required
@@ -121,6 +123,11 @@ def portal_dashboard(request):
 def portal_approval_queue(request):
     """Posts pending client approval, plus already-approved/held (pre-publish) posts."""
     workspace = request.portal_workspace
+    # Cronopios: remember when the client last looked at the pieces, so the team
+    # can see it in Settings -> Client Portal.
+    MagicLinkToken.objects.filter(user=request.user, workspace=workspace, expires_at__gt=timezone.now()).update(
+        last_used_at=timezone.now()
+    )
 
     base = (
         Post.objects.for_workspace(workspace.id)

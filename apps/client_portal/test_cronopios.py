@@ -336,3 +336,18 @@ class ContactFormTests(TestCase):
         cache.clear()
         codes = [self._send().status_code for _ in range(6)]
         self.assertEqual(codes[-1], 429)
+
+
+class LastSeenTests(CronopiosPortalBase):
+    def test_viewing_pieces_is_recorded_and_shown_to_the_team(self):
+        token = MagicLinkToken.objects.create(user=self.client_user, workspace=self.workspace)
+        browser = Client()
+        browser.post(f"/portal/{token.token}/")
+        MagicLinkToken.objects.filter(pk=token.pk).update(last_used_at=None)
+        browser.get("/portal/approvals/")
+        token.refresh_from_db()
+        self.assertIsNotNone(token.last_used_at)
+        team = Client()
+        team.force_login(self.owner)
+        r = team.get(f"/workspace/{self.workspace.id}/settings/clients/")
+        self.assertContains(r, "Vio las piezas hace")
