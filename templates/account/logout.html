@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% load static i18n %}
 
-{% block title %}Sign Out - Brightbean{% endblock %}
+{% block title %}Salir · Cronopios Lab{% endblock %}
 
 {% block auth_content %}
+<style>
+  /* Cronopios: color de marca */
+  :root { --primary: #0E7C5A; }
+  .auth-card .btn-brand { background-color: #0E7C5A; box-shadow: 0 4px 14px rgba(14,124,90,.28); }
+  .auth-card .btn-brand:hover { background-color: #0B6449; }
+</style>
 <div class="w-full max-w-md px-4">
     <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4" style="background: var(--neutral-100);">
@@ -14,10 +20,10 @@
             </svg>
         </div>
         <h1 class="text-2xl font-bold tracking-tight" style="color: var(--text-primary);">
-            Sign out
+            Salir
         </h1>
         <p class="text-sm mt-1" style="color: var(--text-secondary);">
-            Are you sure you want to sign out?
+            ¿Quieres salir?
         </p>
     </div>
 
@@ -25,8 +31,8 @@
         <form method="post" action="{% url 'account_logout' %}">
             {% csrf_token %}
             <div class="flex gap-3">
-                <a href="/" class="btn-outline flex-1">Cancel</a>
-                <button type="submit" class="btn-brand flex-1">Sign Out</button>
+                <a href="/" class="btn-outline flex-1">Cancelar</a>
+                <button type="submit" class="btn-brand flex-1">Salir</button>
             </div>
         </form>
     </div>

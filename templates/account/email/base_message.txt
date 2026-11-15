@@ -1,0 +1,6 @@
+{% autoescape off %}Hola:
+
+{% block content %}{% endblock content %}
+
+Cronopios Lab
+{% endautoescape %}

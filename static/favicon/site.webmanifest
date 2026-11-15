@@ -1,6 +1,6 @@
 {
-  "name": "BrightBean Studio",
-  "short_name": "Bean",
+  "name": "Cronopios Lab",
+  "short_name": "Cronopios",
   "icons": [
     {
       "src": "web-app-manifest-192x192.png",
@@ -15,7 +15,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffda99",
-  "background_color": "#ffffff",
+  "theme_color": "#06111F",
+  "background_color": "#06111F",
   "display": "standalone"
 }

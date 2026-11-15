@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% load static i18n common_extras %}
 
-{% block title %}Sign Up Closed - Brightbean{% endblock %}
+{% block title %}Registro cerrado · Cronopios Lab{% endblock %}
 
 {% block auth_content %}
+<style>
+  /* Cronopios: color de marca */
+  :root { --primary: #0E7C5A; }
+  .auth-card .btn-brand { background-color: #0E7C5A; box-shadow: 0 4px 14px rgba(14,124,90,.28); }
+  .auth-card .btn-brand:hover { background-color: #0B6449; }
+</style>
 <div class="w-full max-w-md px-4">
     <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4" style="background: var(--neutral-100);">

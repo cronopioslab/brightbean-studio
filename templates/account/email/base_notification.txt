@@ -1,0 +1,10 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}Hubo un cambio en tu cuenta:
+
+{% block notification_message %}
+{% endblock notification_message%}
+
+Si no lo reconoces, avísale a Cronopios Lab enseguida. El cambio se hizo desde:
+- Dirección IP: {{ip}}
+- Navegador: {{user_agent}}
+- Fecha: {{timestamp}}{% endautoescape %}{% endblock %}

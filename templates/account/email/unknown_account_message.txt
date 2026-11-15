@@ -1,0 +1,8 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}Alguien intentó entrar con el correo {{ email }}, pero no hay ninguna cuenta con esa dirección.
+
+Si fuiste tú, avísale a Cronopios Lab para que te demos acceso, o crea una cuenta aquí si el registro está abierto:
+
+{{ signup_url }}
+
+Si no fuiste tú, ignora este correo.{% endautoescape %}{% endblock content %}
