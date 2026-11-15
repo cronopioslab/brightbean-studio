@@ -288,3 +288,20 @@ class EntryPageTests(CronopiosPortalBase):
         response = Client().get(f"/portal/{token.token}/")
         self.assertContains(response, "Entrar al portal")
         self.assertContains(response, "background: #0E7C5A")
+
+
+class PortalVideoTests(CronopiosPortalBase):
+    def test_client_sees_a_playable_video_even_when_it_has_a_thumbnail(self):
+        from django.template.loader import render_to_string
+
+        from apps.media_library.models import MediaAsset
+
+        asset = MediaAsset.objects.create(
+            organization=self.org, workspace=self.workspace, uploaded_by=self.owner, filename="s1.mp4",
+            media_type="video", mime_type="video/mp4", file_size=1, file="media_library/s1.mp4", thumbnail="media_library/s1.jpg",
+        )
+        post = self._post()
+        post.media_attachments.create(media_asset=asset, position=0)
+        html = render_to_string("client_portal/_client_card.html", {"post": post, "workspace": self.workspace})
+        self.assertIn("<video", html)
+        self.assertIn("s1.mp4", html)

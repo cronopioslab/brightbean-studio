@@ -31,13 +31,14 @@ already-approved posts get "Pausar"; held posts show their state.
             {# Cronopios: full size once the piece is open, so the client can really check it #}
             <img src="{{ pm.media_asset.file.url }}" alt="Imagen {{ forloop.counter }} de la pieza" loading="lazy"
                  class="rounded-xl border border-stone-200" :class="open ? 'w-full max-w-md h-auto' : 'w-20 h-20 object-cover'">
+            {% elif pm.media_asset.file and pm.media_asset.media_type == 'video' %}
+            {# Cronopios: clients validate reels and stories, so videos are always shown whole and playable #}
+            <video src="{{ pm.media_asset.file.url }}#t=0.5" controls playsinline preload="metadata"
+                   {% if pm.media_asset.thumbnail %}poster="{{ pm.media_asset.thumbnail.url }}"{% endif %}
+                   class="rounded-xl border border-stone-200 bg-black h-auto" style="width: calc(50% - 4px); max-width: 260px;"
+                   @click.stop></video>
             {% elif pm.media_asset.thumbnail %}
             <img src="{{ pm.media_asset.thumbnail.url }}" alt="Vista previa {{ forloop.counter }} de la pieza" class="w-20 h-20 rounded-xl object-cover border border-stone-200">
-            {% elif pm.media_asset.file and pm.media_asset.media_type == 'video' %}
-            {# Cronopios: clients validate reels, so they must be able to play them #}
-            <video src="{{ pm.media_asset.file.url }}" controls playsinline preload="metadata"
-                   class="rounded-xl border border-stone-200 bg-black" :class="open ? 'w-full max-w-md h-auto' : 'w-20 h-20 object-cover'"
-                   @click.stop></video>
             {% else %}
             <div class="w-20 h-20 rounded-xl border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-300"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
             {% endif %}
