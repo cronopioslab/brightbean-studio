@@ -1,0 +1,21 @@
+# Cronopios: production overrides on top of docker-compose.yml + docker-compose.prod.yml.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cronopios.yml up -d --build
+# - Nothing but Caddy (80/443) is published: the base file exposes Postgres (5432)
+#   and Gunicorn (8000) on every interface, and Docker bypasses the host firewall.
+# - Postgres uses the password from .env instead of "postgres".
+# - Caddy gets the site name from APP_DOMAIN in .env.
+services:
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+  app:
+    ports: !reset []
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 4
+  migrate:
+    environment:
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/brightbean
+  caddy:
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN:?set APP_DOMAIN in .env}
+      - CADDY_MEDIA_ROOT=${CADDY_MEDIA_ROOT:-/app/media}
