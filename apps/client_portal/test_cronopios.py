@@ -269,3 +269,14 @@ class ApiKeyHeaderTests(CronopiosPortalBase):
         self.assertEqual(
             c.get("/api/v1/me/", HTTP_AUTHORIZATION="Bearer bb_studio_nope", HTTP_X_API_KEY=token, secure=True).status_code, 401
         )
+
+
+class AsegurarModoClienteTests(CronopiosPortalBase):
+    def test_workspace_with_a_client_is_switched_back_to_client_approval(self):
+        from django.core.management import call_command
+
+        self.workspace.approval_workflow_mode = "required_internal"
+        self.workspace.save()
+        call_command("asegurar_canales")
+        self.workspace.refresh_from_db()
+        self.assertEqual(self.workspace.approval_workflow_mode, "required_internal_and_client")

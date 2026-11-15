@@ -26,6 +26,16 @@ class Command(BaseCommand):
     help = "Crea los canales de validación (Instagram, LinkedIn, Blog) en cada cliente."
 
     def handle(self, *args, **opts):
+        # A workspace with a portal client always waits for that client.
+        fixed = (
+            Workspace.objects.filter(memberships__workspace_role="client", is_archived=False)
+            .exclude(approval_workflow_mode="required_internal_and_client")
+            .distinct()
+        )
+        for ws in fixed:
+            ws.approval_workflow_mode = "required_internal_and_client"
+            ws.save(update_fields=["approval_workflow_mode"])
+            self.stdout.write(f"{ws.name}: aprobación del cliente activada.")
         created = 0
         for ws in Workspace.objects.filter(approval_workflow_mode="required_internal_and_client", is_archived=False):
             for platform, slug, name in CHANNELS:
