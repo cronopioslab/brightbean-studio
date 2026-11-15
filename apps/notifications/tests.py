@@ -30,9 +30,9 @@ class TestNotifyEngine:
         assert n.is_read is False
 
     def test_creates_deliveries_for_default_channels(self, user):
-        notify(user, EventType.POST_APPROVED, "Post approved")
+        notify(user, EventType.POST_PUBLISHED, "Post published")
         deliveries = NotificationDelivery.objects.filter(notification__user=user)
-        # POST_APPROVED defaults: in_app=True, email=False
+        # POST_PUBLISHED defaults: in_app=True, email=False
         channels = set(deliveries.values_list("channel", flat=True))
         assert Channel.IN_APP in channels
         assert Channel.EMAIL not in channels

@@ -5,7 +5,7 @@ already-approved posts get "Pausar"; held posts show their state.
 {% endcomment %}
 {% load tz approval_extras %}
 <div class="rounded-2xl border border-stone-200 bg-white overflow-hidden transition-shadow hover:shadow-md"
-     x-data="{ open: false, panel: null, comment: '' }">
+     x-data="{ open: {% if post.client_pending %}true{% else %}false{% endif %}, panel: null, comment: '' }">
     <div class="p-5 cursor-pointer" @click="open = !open">
         <div class="flex items-center gap-2 mb-2.5 flex-wrap">
             {% for pp in post.platform_posts.all %}

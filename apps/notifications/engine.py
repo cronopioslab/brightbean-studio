@@ -116,7 +116,8 @@ DAILY_DIGEST_HEADINGS = ("Your daily digest: {n} notification", "Your daily dige
 # Key: event_type, Value: dict of channel → default enabled.
 DEFAULT_CHANNELS: dict[str, dict[str, bool]] = {
     EventType.POST_SUBMITTED: {Channel.IN_APP: True, Channel.EMAIL: True},
-    EventType.POST_APPROVED: {Channel.IN_APP: True, Channel.EMAIL: False},
+    # Cronopios: the agency wants an email the moment a client approves.
+    EventType.POST_APPROVED: {Channel.IN_APP: True, Channel.EMAIL: True},
     EventType.POST_CHANGES_REQUESTED: {Channel.IN_APP: True, Channel.EMAIL: True},
     EventType.POST_REJECTED: {Channel.IN_APP: True, Channel.EMAIL: True},
     EventType.POST_PUBLISHED: {Channel.IN_APP: True, Channel.EMAIL: False},
