@@ -74,11 +74,11 @@ Context: previews (list of dicts with account, title, caption, first_comment, ch
             {% if media_items %}
             {% if media_items|length > 1 %}
             {# ─── Carousel ─── #}
-            <div class="relative bg-stone-100" style="aspect-ratio: 1/1;" x-data="{ slide: 0, count: {{ media_items|length }} }">
+            <div class="relative bg-stone-100" style="{% if media_items.0.is_video %}aspect-ratio: 9/16; max-height: 640px; margin: 0 auto;{% else %}aspect-ratio: 1/1;{% endif %}" x-data="{ slide: 0, count: {{ media_items|length }} }">
                 {% for m in media_items %}
                 <div x-show="slide === {{ forloop.counter0 }}" class="absolute inset-0">
                     {% if m.is_video %}
-                    <video src="{{ m.url }}#t=0.5" class="w-full h-full object-cover" muted preload="metadata"></video>
+                    <video src="{{ m.url }}#t=0.5" class="w-full h-full object-contain bg-black" muted playsinline controls preload="metadata"></video>
                     {% else %}
                     <img src="{{ m.url }}" class="w-full h-full object-cover" alt="">
                     {% endif %}
@@ -104,9 +104,9 @@ Context: previews (list of dicts with account, title, caption, first_comment, ch
             {% else %}
             {# ─── Single media ─── #}
             {% with m=media_items.0 %}
-            <div class="relative bg-stone-100" style="aspect-ratio: 1/1;">
+            <div class="relative bg-stone-100" style="{% if media_items.0.is_video %}aspect-ratio: 9/16; max-height: 640px; margin: 0 auto;{% else %}aspect-ratio: 1/1;{% endif %}">
                 {% if m.is_video %}
-                <video src="{{ m.url }}#t=0.5" class="w-full h-full object-cover" muted preload="metadata"></video>
+                <video src="{{ m.url }}#t=0.5" class="w-full h-full object-contain bg-black" muted playsinline controls preload="metadata"></video>
                 {% else %}
                 <img src="{{ m.url }}" class="w-full h-full object-cover" alt="">
                 {% endif %}
