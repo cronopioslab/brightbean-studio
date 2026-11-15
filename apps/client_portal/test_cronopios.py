@@ -151,3 +151,36 @@ class PlaceholderAccountTests(CronopiosPortalBase):
         self.account.refresh_from_db()
         self.assertEqual(self.account.connection_status, SocialAccount.ConnectionStatus.CONNECTED)
         self.assertIsNone(self.account.last_health_check_at)
+
+    def test_creating_a_placeholder_queues_no_analytics_backfill(self):
+        SocialAccount.objects.create(
+            workspace=self.workspace, platform="facebook",
+            account_platform_id=SocialAccount.VALIDATION_PLACEHOLDER_PREFIX + "fb",
+            account_name="Facebook demo", connection_status="connected",
+        )
+        self.assertFalse(Task.objects.filter(task_name__contains="backfill_account_analytics").exists())
+
+
+class AgregarClienteCommandTests(CronopiosPortalBase):
+    def test_adds_a_portal_client_with_a_placeholder_account(self):
+        from django.core.management import call_command
+
+        call_command(
+            "agregar_cliente", espacio="Nuevo", email="Persona@Cliente.com", nombre="Persona", organizacion="Cronopios"
+        )
+        ws = Workspace.objects.get(name="Nuevo")
+        self.assertEqual(ws.approval_workflow_mode, "required_internal_and_client")
+        user = User.objects.get(email="persona@cliente.com")
+        self.assertTrue(WorkspaceMembership.objects.filter(user=user, workspace=ws, workspace_role="client").exists())
+        self.assertFalse(user.has_usable_password())
+        self.assertTrue(SocialAccount.objects.get(workspace=ws).is_validation_placeholder)
+        self.assertTrue(WorkspaceMembership.objects.filter(user=self.owner, workspace=ws, workspace_role="owner").exists())
+        # No empty organization of their own.
+        self.assertEqual(list(OrgMembership.objects.filter(user=user).values_list("organization__name", flat=True)), ["Cronopios"])
+
+    def test_refuses_to_turn_a_team_member_into_a_client(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        with self.assertRaises(CommandError):
+            call_command("agregar_cliente", espacio=self.workspace.name, email=self.owner.email, organizacion="Cronopios")

@@ -150,5 +150,7 @@ def create_organization_on_user_create(sender, instance, created, **kwargs):
     The allauth signal fires *after* post_save, so for normal signups
     post_save runs first and the allauth handler is a no-op (idempotent guard).
     """
-    if created:
+    # Cronopios: portal clients are added to the agency's organization; they
+    # must not get an empty organization of their own.
+    if created and not getattr(instance, "_skip_provisioning", False):
         provision_organization_and_workspace(instance)

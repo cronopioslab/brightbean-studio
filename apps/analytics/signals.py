@@ -50,6 +50,9 @@ def enqueue_analytics_backfill(sender, instance: SocialAccount, created: bool, u
     # noisily.
     if _backfills_suppressed.get() or getattr(instance, "_skip_analytics_backfill", False):
         return
+    # Cronopios: approval-only placeholders have no token and no data to fetch.
+    if instance.is_validation_placeholder:
+        return
     if not created:
         if update_fields is None and not getattr(instance, "_analytics_credentials_changed", False):
             return
@@ -125,7 +128,9 @@ def enqueue_backfill_on_platform_enable(sender, instance: AnalyticsPlatformConfi
         for pk in SocialAccount.objects.filter(
             platform=instance.platform,
             connection_status=SocialAccount.ConnectionStatus.CONNECTED,
-        ).values_list("id", flat=True)
+        )
+        .exclude(account_platform_id__startswith=SocialAccount.VALIDATION_PLACEHOLDER_PREFIX)
+        .values_list("id", flat=True)
     ]
     setattr(instance, BACKFILL_QUEUED_ATTR, len(account_ids))
     if not account_ids:

@@ -10,6 +10,8 @@
 # Optional:
 #   APP_DOMAIN       defaults to <public-ip>.sslip.io (free HTTPS name, no domain needed)
 #   FIRST_CLIENT     name of the first client workspace (default: "Cliente")
+#   CLIENT_EMAIL     who approves for that client (added to the portal, no account)
+#   CLIENT_NAME      their first name, for the email greeting
 #   REPO_URL, REPO_BRANCH
 set -euo pipefail
 
@@ -109,6 +111,11 @@ SocialAccount.objects.get_or_create(
 )
 print("ok", org.name, ws.name)
 '
+
+if [ -n "${CLIENT_EMAIL:-}" ]; then
+  $COMPOSE exec -T app python manage.py agregar_cliente \
+    --espacio "$FIRST_CLIENT" --email "$CLIENT_EMAIL" --nombre "${CLIENT_NAME:-}"
+fi
 
 cat > /root/cronopios-listo.txt <<EOF
 BrightBean de Cronopios instalado.
