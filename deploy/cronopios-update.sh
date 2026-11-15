@@ -9,6 +9,7 @@ main() {
   cd "$DIR"
   local branch; branch="$(git rev-parse --abbrev-ref HEAD)"
   git fetch -q origin "$branch"
+  # Keep the installed commands current, even when nothing else changed.
   install -m 0755 deploy/cronopios-cliente.sh /usr/local/bin/cronopios-cliente 2>/dev/null || true
   if [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$branch")" ] && [ "${1:-}" != "--force" ]; then
     exit 0
@@ -16,6 +17,8 @@ main() {
   echo "== $(date -u) actualizando a $(git rev-parse --short "origin/$branch")"
   git reset -q --hard "origin/$branch"
   install -m 0755 deploy/cronopios-cliente.sh /usr/local/bin/cronopios-cliente
+  # The whole script is already read (main below), so replacing it is safe.
+  install -m 0755 deploy/cronopios-update.sh /usr/local/bin/cronopios-update
   $COMPOSE up -d --build </dev/null
   for i in $(seq 1 60); do $COMPOSE exec -T app python manage.py check </dev/null >/dev/null 2>&1 && break; sleep 5; done
   $COMPOSE exec -T app python manage.py asegurar_canales </dev/null || true
