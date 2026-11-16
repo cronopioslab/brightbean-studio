@@ -296,6 +296,24 @@ def retrieve(request, post_id: uuid.UUID):
     return _post_to_response(request, post)
 
 
+@router.post("/{post_id}/reopen", response=PostResponse, summary="Cronopios: send an approved or returned post back to draft")
+def reopen(request, post_id: uuid.UUID):
+    """Back to draft so its media and text can be replaced (for example, new
+    creatives for a piece the client had already approved). The team submits
+    and approves it again from the panel, so the client sees it once more."""
+    from apps.approvals.services import _transition_or_skip
+
+    enforce_http_rate_limits(request, is_write=True)
+    _require_perm(request, "create_posts")
+    post = _get_workspace_post(request, post_id)
+    moved = [pp for pp in post.platform_posts.all() if pp.status in ("approved", "changes_requested", "rejected")]
+    for pp in moved:
+        _transition_or_skip(pp, "draft")
+    post.refresh_from_db()
+    log_audit_entry(request, action="post.update", target_id=post.id, status_code=200)
+    return _post_to_response(request, post)
+
+
 @router.get("/{post_id}/feedback", summary="Cronopios: approval history and comments of a post")
 def feedback(request, post_id: uuid.UUID):
     """Every approval action (with its comment) and every comment on the post,

@@ -432,3 +432,18 @@ class FeedbackApiTests(CronopiosPortalBase):
         r = Client().get(f"/api/v1/posts/{post.id}/feedback", HTTP_AUTHORIZATION=f"Bearer {token}", secure=True)
         self.assertEqual(r.status_code, 200, r.content)
         self.assertIn("Cambia la estética", json.dumps(r.json(), ensure_ascii=False))
+
+
+class ReopenApiTests(CronopiosPortalBase):
+    def test_reopen_sends_an_approved_post_back_to_draft(self):
+        from apps.api_keys.services import issue_api_key
+        from apps.approvals.services import approve_post
+
+        post = self._post("Pieza")
+        self._to_client(post)
+        approve_post(post, self.client_user, self.workspace)
+        token = issue_api_key(workspace=self.workspace, social_accounts=[self.account], issued_by=self.owner,
+                              name="t", permissions=["create_posts"]).plaintext_token
+        r = Client().post(f"/api/v1/posts/{post.id}/reopen", HTTP_AUTHORIZATION=f"Bearer {token}", secure=True)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(post.platform_posts.get().status, "draft")
