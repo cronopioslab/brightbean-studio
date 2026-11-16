@@ -22,7 +22,7 @@ already-approved posts get "Pausar"; held posts show their state.
             {% endif %}
         </div>
 
-        <p class="text-[0.9375rem] leading-relaxed text-stone-800" :class="open ? '' : 'line-clamp-3'">{{ post.caption }}</p>
+        <p class="text-[0.9375rem] leading-relaxed text-stone-800" :class="open ? '' : 'line-clamp-3'">{{ post.caption|linebreaksbr }}</p>
 
         {% if post.media_attachments.all %}
         <div class="flex gap-2 mt-3 flex-wrap">
