@@ -1,5 +1,6 @@
-"""Cronopios: client review emails, sent after a short delay so a burst of
-approvals reaches the client as one email instead of one per piece."""
+"""Cronopios: client review emails. The email waits until the team has stopped
+approving for a while (every new approval pushes it back), so a whole week of
+pieces reaches the client as ONE email instead of one per piece."""
 
 import json
 import logging
@@ -8,7 +9,8 @@ from background_task import background
 
 logger = logging.getLogger(__name__)
 
-REVIEW_EMAIL_DELAY_SECONDS = 120
+# Quiet time after the LAST approval before the client gets the email.
+REVIEW_EMAIL_DELAY_SECONDS = 15 * 60
 TASK_NAME = "apps.client_portal.tasks.send_client_review_email"
 
 
@@ -31,8 +33,15 @@ def queue_client_review_email(workspace, client_user, *, reminder=False):
     """Queue one review email for this client unless one is already waiting."""
     from background_task.models import Task
 
+    from datetime import timedelta
+
+    from django.utils import timezone
+
     params = json.dumps([[str(workspace.id), str(client_user.id)], {"reminder": reminder}])
-    if Task.objects.filter(task_name=TASK_NAME, task_params=params, failed_at__isnull=True).exists():
+    waiting = Task.objects.filter(task_name=TASK_NAME, task_params=params, failed_at__isnull=True)
+    if waiting.exists():
+        # Another approval while the email waits: push it back, still one email.
+        waiting.filter(locked_by__isnull=True).update(run_at=timezone.now() + timedelta(seconds=REVIEW_EMAIL_DELAY_SECONDS))
         return
     send_client_review_email(str(workspace.id), str(client_user.id), reminder=reminder)
 

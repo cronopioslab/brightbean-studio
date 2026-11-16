@@ -351,3 +351,16 @@ class LastSeenTests(CronopiosPortalBase):
         team.force_login(self.owner)
         r = team.get(f"/workspace/{self.workspace.id}/settings/clients/")
         self.assertContains(r, "Vio las piezas hace")
+
+
+class SlidingEmailTests(CronopiosPortalBase):
+    def test_each_new_approval_pushes_the_single_email_back(self):
+        from datetime import timedelta
+
+        self._to_client(self._post("Uno"))
+        task = self._queued().get()
+        Task.objects.filter(pk=task.pk).update(run_at=timezone.now() + timedelta(minutes=1))
+        self._to_client(self._post("Dos"))
+        task.refresh_from_db()
+        self.assertEqual(self._queued().count(), 1)
+        self.assertGreater(task.run_at, timezone.now() + timedelta(minutes=10))
