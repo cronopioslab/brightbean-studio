@@ -185,7 +185,9 @@ def _get_filtered_platform_posts(workspace, request):
         # would fire its own media_attachments + media_asset queries (N+1) on
         # every month/week/day render.
         .prefetch_related("post__media_attachments__media_asset")
-        .annotate(effective_at=Coalesce("scheduled_at", "post__scheduled_at"))
+        # Cronopios: a piece with only a proposed date (waiting for approval)
+        # still shows on that day, so the week reads like the plan.
+        .annotate(effective_at=Coalesce("scheduled_at", "post__scheduled_at", "post__proposed_publish_at"))
     )
 
     # Status filter — editorial status now lives on the PlatformPost itself,

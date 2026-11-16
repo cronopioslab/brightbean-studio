@@ -381,3 +381,24 @@ class BlogMarkdownTests(TestCase):
         self.assertIn("<table", html)
         self.assertNotIn("<script>", html)
         self.assertNotIn('href="javascript', html)
+
+
+class AvisoPublicarTests(CronopiosPortalBase):
+    def test_lists_todays_approved_pieces_on_unconnected_channels(self):
+        from datetime import timedelta
+
+        from django.core.management import call_command
+
+        hoy = self._post("Pieza de hoy")
+        manana = self._post("Pieza de mañana")
+        for p, delta in ((hoy, 0), (manana, 1)):
+            p.proposed_publish_at = timezone.now() + timedelta(days=delta)
+            p.save()
+            p.platform_posts.update(status="approved")
+        mail.outbox.clear()
+        call_command("aviso_publicar", fecha=timezone.now().astimezone(__import__("zoneinfo").ZoneInfo("UTC")).date().isoformat())
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        self.assertIn("Pieza de hoy", body)
+        self.assertNotIn("Pieza de mañana", body)
+        self.assertEqual(mail.outbox[0].to, ["owner@example.com"])

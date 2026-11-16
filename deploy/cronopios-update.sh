@@ -20,6 +20,29 @@ main() {
   # The whole script is already read (main below), so replacing it is safe.
   install -m 0755 deploy/cronopios-update.sh /usr/local/bin/cronopios-update
   install -m 0755 deploy/cronopios-dominio.sh /usr/local/bin/cronopios-dominio
+  # Morning email (08:00 Argentina) with what has to be published by hand today.
+  cat > /etc/systemd/system/cronopios-aviso.service <<UNIT
+[Unit]
+Description=Aviso de lo que hay que publicar a mano hoy
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=$DIR
+ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cronopios.yml exec -T app python manage.py aviso_publicar
+UNIT
+  cat > /etc/systemd/system/cronopios-aviso.timer <<UNIT
+[Unit]
+Description=Aviso diario de publicación manual
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 America/Argentina/Cordoba
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl daemon-reload && systemctl enable --now cronopios-aviso.timer >/dev/null 2>&1 || true
   # The website: until there is a domain it lives at sitio.<portal address>.
   if [ -z "$(python3 deploy/cronopios-env.py get SITE_DOMAIN)" ]; then
     python3 deploy/cronopios-env.py set "SITE_DOMAIN=sitio.$(python3 deploy/cronopios-env.py get APP_DOMAIN)"
