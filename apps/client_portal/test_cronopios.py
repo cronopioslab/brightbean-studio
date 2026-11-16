@@ -225,6 +225,21 @@ class ForwardApprovedPieceTests(CronopiosPortalBase):
         self.assertIn("Mi artículo", msg.subject)
         self.assertIn("Texto del artículo", msg.body)
 
+    def test_piece_with_open_questions_warns_the_team_instead(self):
+        from apps.client_portal.tasks import forward_approved_piece
+
+        account = self._blog()
+        post = create_post(workspace=self.workspace, social_account=account, title="Artículo",
+                           caption="Dato: 74 % *(pendiente de confirmar con Lennin)*", author=self.owner)
+        post = post[0] if isinstance(post, tuple) else post
+        self._client_approves(post)
+        mail.outbox.clear()
+        forward_approved_piece.now(str(post.platform_posts.get().id), str(self.client_user.id))
+        msg = mail.outbox[-1]
+        self.assertEqual(msg.to, [self.owner.email])
+        self.assertIn("sin confirmar", msg.subject)
+        self.assertIn("74 %", msg.body)
+
     def test_placeholder_without_email_is_not_forwarded(self):
         post = self._blog_post(self._blog(email=""))
         self._client_approves(post)

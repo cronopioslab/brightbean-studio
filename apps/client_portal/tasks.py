@@ -3,6 +3,7 @@ approving for a while (every new approval pushes it back), so a whole week of
 pieces reaches the client as ONE email instead of one per piece."""
 
 import json
+import re
 import logging
 
 from background_task import background
@@ -54,8 +55,13 @@ def queue_client_review_email(workspace, client_user, *, reminder=False):
 FORWARD_ATTACH_LIMIT_BYTES = 15 * 1024 * 1024
 
 
+PENDING_MARKERS = re.compile(
+    r"confirmar con|pendiente de confirmar|respuesta pendiente|por definir|sin confirmar|\[pendiente", re.I
+)
+
+
 @background(schedule=5)
-def forward_approved_piece(platform_post_id, approver_id):
+def forward_approved_piece(platform_post_id, approver_id, force=False):
     from django.conf import settings
     from django.contrib.auth import get_user_model
     from django.core.mail import EmailMultiAlternatives
@@ -90,6 +96,27 @@ def forward_approved_piece(platform_post_id, approver_id):
 
     title = (pp.platform_specific_title or post.title or "").strip()
     body = (pp.platform_specific_caption or post.caption or "").strip()
+
+    # Cronopios: a piece that still carries open questions ("confirmar con...",
+    # "por definir", "pendiente") is not ready for whoever publishes it. Warn the
+    # team instead, listing the open points.
+    app_url = getattr(settings, "APP_URL", "").rstrip("/")
+    pending = [ln.strip() for ln in (title + "\n" + body + "\n" + (post.internal_notes or "")).splitlines()
+               if PENDING_MARKERS.search(ln)]
+    if pending and not force:
+        EmailMultiAlternatives(
+            subject=f"{workspace.name} · Aprobado, pero con puntos sin confirmar: {title or post.caption_snippet}",
+            body=(
+                f"{approver.display_name if approver else 'El cliente'} aprobó «{title or post.caption_snippet}», "
+                f"pero el texto todavía tiene puntos sin confirmar, así que NO se lo mandé a {to}.\n\n"
+                + "\n".join(f"- {ln[:300]}" for ln in pending[:15])
+                + f"\n\nCuando estén resueltos, corrige la pieza en el panel: {app_url}/workspace/{workspace.id}/compose/{post.id}/\n"
+            ),
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@localhost"),
+            to=owners or [to],
+            headers=transactional(),
+        ).send()
+        return
     when = pp.scheduled_at or post.scheduled_at or post.proposed_publish_at
     tz = workspace.effective_timezone or "UTC"
     app_url = getattr(settings, "APP_URL", "").rstrip("/")
