@@ -296,6 +296,38 @@ def retrieve(request, post_id: uuid.UUID):
     return _post_to_response(request, post)
 
 
+@router.get("/{post_id}/feedback", summary="Cronopios: approval history and comments of a post")
+def feedback(request, post_id: uuid.UUID):
+    """Every approval action (with its comment) and every comment on the post,
+    oldest first, so the team can read exactly what the client asked for."""
+    from apps.approvals.models import ApprovalAction, PostComment
+
+    enforce_http_rate_limits(request, is_write=False)
+    post = _get_workspace_post(request, post_id)
+    actions = [
+        {
+            "at": a.created_at.isoformat(),
+            "who": getattr(a.user, "display_name", None) or getattr(a.user, "email", ""),
+            "action": a.action,
+            "comment": a.comment,
+            "channel": a.platform_post.social_account.account_name if a.platform_post_id else "",
+        }
+        for a in ApprovalAction.objects.filter(post=post).select_related("user", "platform_post__social_account").order_by("created_at")
+    ]
+    comments = [
+        {
+            "at": c.created_at.isoformat(),
+            "who": getattr(c.author, "display_name", None) or getattr(c.author, "email", ""),
+            "visibility": c.visibility,
+            "body": c.body,
+            "reply_to": str(c.parent_comment_id) if c.parent_comment_id else None,
+        }
+        for c in PostComment.objects.filter(post=post, deleted_at__isnull=True).select_related("author").order_by("created_at")
+    ]
+    log_audit_entry(request, action="post.read", target_id=post.id, status_code=200)
+    return {"post_id": str(post.id), "actions": actions, "comments": comments}
+
+
 @router.patch("/{post_id}", response=PostResponse, summary="Update draft fields")
 def update(request, post_id: uuid.UUID, payload: UpdatePostRequest):
     enforce_http_rate_limits(request, is_write=True)

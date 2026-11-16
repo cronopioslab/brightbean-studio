@@ -183,8 +183,8 @@ def approve_post(target, user, workspace, comment=""):
         notify(
             user=post.author,
             event_type=EventType.POST_APPROVED,
-            title="Post approved",
-            body=f'Your post "{post.caption_snippet}" was approved by {user.display_name}.',
+            title=f"{workspace.name}: {user.display_name} aprobó una pieza",
+            body=f'{user.display_name} aprobó «{(post.title or post.caption_snippet)[:120]}».',
             data={
                 "post_id": str(post.id),
                 "workspace_id": str(workspace.id),
@@ -233,8 +233,8 @@ def request_changes(target, user, workspace, comment):
         notify(
             user=post.author,
             event_type=EventType.POST_CHANGES_REQUESTED,
-            title="Changes requested on your post",
-            body=f'{user.display_name} requested changes: "{comment[:100]}"',
+            title=f"{workspace.name}: {user.display_name} pidió cambios",
+            body=f'{user.display_name} pidió cambios en «{(post.title or post.caption_snippet)[:120]}»: "{comment[:1000]}"',
             data={
                 "post_id": str(post.id),
                 "workspace_id": str(workspace.id),

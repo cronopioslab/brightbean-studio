@@ -417,3 +417,18 @@ class AvisoPublicarTests(CronopiosPortalBase):
         self.assertIn("Pieza de hoy", body)
         self.assertNotIn("Pieza de mañana", body)
         self.assertEqual(mail.outbox[0].to, ["owner@example.com"])
+
+
+class FeedbackApiTests(CronopiosPortalBase):
+    def test_feedback_endpoint_returns_the_client_comment(self):
+        from apps.api_keys.services import issue_api_key
+        from apps.approvals.services import request_changes
+
+        post = self._post("Pieza")
+        self._to_client(post)
+        request_changes(post, self.client_user, self.workspace, "Cambia la estética")
+        token = issue_api_key(workspace=self.workspace, social_accounts=[self.account], issued_by=self.owner,
+                              name="t", permissions=["create_posts"]).plaintext_token
+        r = Client().get(f"/api/v1/posts/{post.id}/feedback", HTTP_AUTHORIZATION=f"Bearer {token}", secure=True)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn("Cambia la estética", json.dumps(r.json(), ensure_ascii=False))
