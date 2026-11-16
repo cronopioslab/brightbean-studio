@@ -364,3 +364,20 @@ class SlidingEmailTests(CronopiosPortalBase):
         task.refresh_from_db()
         self.assertEqual(self._queued().count(), 1)
         self.assertGreater(task.run_at, timezone.now() + timedelta(minutes=10))
+
+
+class BlogMarkdownTests(TestCase):
+    def test_markdown_is_rendered_safely(self):
+        from apps.client_portal.templatetags.cronopios_md import cronopios_markdown
+
+        html = cronopios_markdown(
+            "## Título\nTexto con **negrita** y [enlace](https://initiumsoft.com).\n\n- uno\n- dos\n\n"
+            "| A | B |\n|---|---|\n| 1 | 2 |\n\n<script>alert(1)</script> [x](javascript:alert(1))"
+        )
+        self.assertIn("<h3", html)
+        self.assertIn("<strong>negrita</strong>", html)
+        self.assertIn('href="https://initiumsoft.com"', html)
+        self.assertIn("<ul", html)
+        self.assertIn("<table", html)
+        self.assertNotIn("<script>", html)
+        self.assertNotIn('href="javascript', html)

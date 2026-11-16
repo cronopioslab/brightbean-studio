@@ -178,6 +178,8 @@ def portal_approval_queue(request):
         post.client_pending = "pending_client" in child_statuses
         post.client_on_hold = "on_hold" in child_statuses
         post.client_approved = "approved" in child_statuses
+        # Cronopios: blog pieces are articles written in Markdown; show them formatted.
+        post.is_blog_piece = any(pp.social_account.platform == "devto" for pp in post.platform_posts.all())
 
     return render(
         request,
