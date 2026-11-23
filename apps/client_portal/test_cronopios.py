@@ -447,3 +447,10 @@ class ReopenApiTests(CronopiosPortalBase):
         r = Client().post(f"/api/v1/posts/{post.id}/reopen", HTTP_AUTHORIZATION=f"Bearer {token}", secure=True)
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(post.platform_posts.get().status, "draft")
+
+
+class PlaceholderCannotBeScheduledTests(CronopiosPortalBase):
+    def test_validation_channel_refuses_scheduling(self):
+        from apps.composer.services import publish_blocker
+
+        self.assertIn("validación", publish_blocker(self.account, media_types=set()))

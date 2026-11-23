@@ -453,6 +453,14 @@ def publish_blocker(social_account, *, media_types, platform_extra: dict | None 
     media a platform can't do without (``media_blocker``), and a pin with no
     board, which our own Pinterest provider refuses.
     """
+    # Cronopios: a validation channel exists only so the client can approve
+    # pieces; it can't publish anywhere. Scheduling or publishing on it (instead
+    # of "Submit for Approval") would skip the client and fail later.
+    if getattr(social_account, "is_validation_placeholder", False):
+        return (
+            "Este es un canal de validación: no publica en ninguna red. "
+            "Usa «Submit for Approval» para que el cliente la revise; se publica a mano."
+        )
     reason = media_blocker(social_account, media_types=media_types)
     if reason:
         return reason
