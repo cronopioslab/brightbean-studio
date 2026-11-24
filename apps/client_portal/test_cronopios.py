@@ -454,3 +454,36 @@ class PlaceholderCannotBeScheduledTests(CronopiosPortalBase):
         from apps.composer.services import publish_blocker
 
         self.assertIn("validación", publish_blocker(self.account, media_types=set()))
+
+
+class SendToClientTests(CronopiosPortalBase):
+    def _token(self):
+        from apps.api_keys.services import issue_api_key
+
+        return issue_api_key(workspace=self.workspace, social_accounts=[self.account], issued_by=self.owner,
+                             name="t", permissions=["create_posts", "approve_posts"]).plaintext_token
+
+    def test_draft_goes_to_client_in_one_step(self):
+        post = self._post("Pieza")
+        r = Client().post(f"/api/v1/posts/{post.id}/send-to-client", HTTP_AUTHORIZATION=f"Bearer {self._token()}", secure=True)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(post.platform_posts.get().status, "pending_client")
+        self.assertTrue(self._queued().exists())
+
+    def test_piece_approved_by_the_team_on_the_clients_behalf_goes_back(self):
+        from apps.approvals.services import approve_post
+
+        post = self._post("Pieza")
+        self._to_client(post)
+        approve_post(post, self.owner, self.workspace)  # the double click
+        self.assertEqual(post.platform_posts.get().status, "approved")
+        Client().post(f"/api/v1/posts/{post.id}/send-to-client", HTTP_AUTHORIZATION=f"Bearer {self._token()}", secure=True)
+        self.assertEqual(post.platform_posts.get().status, "pending_client")
+
+    def test_bulk_approve_by_team_never_signs_for_the_client(self):
+        from apps.approvals.services import bulk_approve
+
+        post = self._post("Pieza")
+        self._to_client(post)
+        bulk_approve([post.id], self.owner, self.workspace)
+        self.assertEqual(post.platform_posts.get().status, "pending_client")

@@ -376,10 +376,20 @@ def resubmit_post(target, user, workspace):
 def bulk_approve(post_ids, user, workspace):
     """Approve all eligible PlatformPosts under each post (bundled per post)."""
     results = []
+    # Cronopios: a bulk approval from the team only clears the internal review.
+    # Approving a piece that already waits for the client (a double click, or a
+    # second pass over the list) would sign it off in the client's name and the
+    # client would never get the email.
+    from apps.members.models import WorkspaceMembership
+
+    is_client = WorkspaceMembership.objects.filter(
+        user=user, workspace=workspace, workspace_role=WorkspaceMembership.WorkspaceRole.CLIENT
+    ).exists()
+    statuses = ["pending_review", "pending_client"] if is_client else ["pending_review"]
     posts = Post.objects.filter(
         id__in=post_ids,
         workspace=workspace,
-        platform_posts__status__in=["pending_review", "pending_client"],
+        platform_posts__status__in=statuses,
     ).distinct()
 
     for post in posts:

@@ -314,6 +314,46 @@ def reopen(request, post_id: uuid.UUID):
     return _post_to_response(request, post)
 
 
+@router.post("/{post_id}/send-to-client", response=PostResponse, summary="Cronopios: approve internally and send to the client")
+def send_to_client(request, post_id: uuid.UUID):
+    """The team's sign-off in one step: a draft is submitted, a piece in internal
+    review is approved, and a piece the team approved by mistake on the client's
+    behalf goes back to the client. The client gets the usual single email."""
+    from apps.approvals.models import ApprovalAction
+    from apps.approvals.services import _transition_or_skip, approve_post, submit_for_review
+    from apps.client_portal.tasks import queue_client_review_email
+    from apps.members.models import WorkspaceMembership
+
+    enforce_http_rate_limits(request, is_write=True)
+    _require_perm(request, "approve_posts")
+    post = _get_workspace_post(request, post_id)
+    workspace = post.workspace
+    team_user = getattr(request.api_key, "issued_by", None)
+    if team_user is None:
+        raise HttpError(400, "La llave no tiene un usuario del equipo asociado.")
+    clients = list(
+        WorkspaceMembership.objects.filter(workspace=workspace, workspace_role="client").select_related("user")
+    )
+    client_ids = {m.user_id for m in clients}
+    statuses = set(post.platform_posts.values_list("status", flat=True))
+    if "draft" in statuses or "changes_requested" in statuses:
+        submit_for_review(post, team_user, workspace)
+        post.refresh_from_db()
+    if post.platform_posts.filter(status="pending_review").exists():
+        approve_post(post, team_user, workspace)
+        post.refresh_from_db()
+    client_signed = ApprovalAction.objects.filter(post=post, action="approved", user_id__in=client_ids).exists()
+    if not client_signed:
+        for pp in post.platform_posts.filter(status="approved"):
+            _transition_or_skip(pp, "pending_client")
+    if post.platform_posts.filter(status="pending_client").exists():
+        for m in clients:
+            queue_client_review_email(workspace, m.user)
+    post.refresh_from_db()
+    log_audit_entry(request, action="post.update", target_id=post.id, status_code=200)
+    return _post_to_response(request, post)
+
+
 @router.get("/{post_id}/feedback", summary="Cronopios: approval history and comments of a post")
 def feedback(request, post_id: uuid.UUID):
     """Every approval action (with its comment) and every comment on the post,
